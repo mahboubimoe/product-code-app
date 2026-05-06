@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Product Code Picture Checker</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f5f5f5;
+      margin: 0;
+      padding: 25px;
+    }
+
+    .container {
+      max-width: 1100px;
+      margin: auto;
+      background: white;
+      padding: 25px;
+      border-radius: 12px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+
+    h1, h2 { margin-top: 0; }
+
+    .help {
+      background: #fff8d6;
+      padding: 12px;
+      border-radius: 8px;
+      font-size: 14px;
+      line-height: 1.5;
+      margin-bottom: 15px;
+    }
+
+    textarea, input, button {
+      font-size: 16px;
+      box-sizing: border-box;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 170px;
+      padding: 12px;
+      font-family: monospace;
+    }
+
+    button {
+      padding: 12px;
+      margin-top: 10px;
+      margin-right: 8px;
+      background: #1f7a3f;
+      color: white;
+      border: none;
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    button:hover { background: #155c2f; }
+    .secondary { background: #555; }
+    .secondary:hover { background: #333; }
+    .danger { background: #b00020; }
+    .danger:hover { background: #7a0016; }
+
+    .message {
+      margin-top: 15px;
+      padding: 12px;
+      border-radius: 8px;
+      background: #f0f0f0;
+      font-weight: bold;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+      background: white;
+    }
+
+    th, td {
+      border: 1px solid #ccc;
+      padding: 10px;
+      text-align: left;
+      vertical-align: middle;
+    }
+
+    th {
+      background: #eeeeee;
+    }
+
+    .code-input {
+      width: 100%;
+      padding: 9px;
+    }
+
+    .product-img {
+      display: none;
+      max-width: 120px;
+      max-height: 100px;
+      border-radius: 8px;
+      border: 1px solid #ddd;
+      object-fit: cover;
+    }
+
+    .status {
+      font-size: 13px;
+      color: #555;
+      margin-top: 5px;
+    }
+
+    .wrong {
+      color: #b00020;
+      font-weight: bold;
+    }
+
+    .correct {
+      color: #1f7a3f;
+      font-weight: bold;
+    }
+
+    .search-box {
+      width: 100%;
+      padding: 12px;
+      margin-top: 20px;
+    }
+
+    @media (max-width: 700px) {
+      body { padding: 10px; }
+      th, td { padding: 7px; font-size: 14px; }
+      .product-img { max-width: 90px; max-height: 80px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Product Code Picture Checker</h1>
+
+    <div class="help">
+      Paste your product list below using this format:<br><br>
+      <strong>product name, product code</strong><br><br>
+      Example:<br>
+      Apple, 123<br>
+      Italian parsley, 234<br>
+      Banana, 456<br><br>
+      After saving, the app shows an Excel-style table. Enter the code beside each product. If the code is correct, the picture appears in the third column.
+    </div>
+
+    <h2>Product List Setup</h2>
+    <textarea id="productData" placeholder="Apple, 123&#10;Italian parsley, 234&#10;Banana, 456"></textarea>
+
+    <br>
+    <button onclick="saveProductList()">Save Product List</button>
+    <button class="secondary" onclick="loadExampleData()">Load Example Data</button>
+    <button class="danger" onclick="clearProductList()">Clear Saved List</button>
+
+    <div id="message" class="message">Paste your product list and click Save Product List.</div>
+
+    <input class="search-box" type="text" id="searchBox" placeholder="Search product name..." oninput="renderTable()" />
+
+    <div id="tableArea"></div>
+  </div>
+
+  <script>
+    let products = [];
+
+    window.onload = function () {
+      const savedData = localStorage.getItem("productData");
+      if (savedData) {
+        document.getElementById("productData").value = savedData;
+        parseProductData(savedData);
+        renderTable();
+        showMessage(products.length + " products loaded.");
+      }
+    };
+
+    function parseProductData(data) {
+      products = [];
+      const lines = data.split("\n");
+
+      lines.forEach(line => {
+        const parts = line.split(",");
+
+        if (parts.length >= 2) {
+          const name = parts[0].trim();
+          const code = parts[1].trim();
+
+          if (name && code) {
+            products.push({
+              id: makeId(name),
+              name: name,
+              code: code,
+              imageUrl: "",
+              imageLoaded: false
+            });
+          }
+        }
+      });
+    }
+
+    function makeId(text) {
+      return text.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") + "-" + Math.random().toString(36).slice(2, 8);
+    }
+
+    function saveProductList() {
+      const data = document.getElementById("productData").value.trim();
+
+      if (!data) {
+        alert("Please enter your product list first.");
+        return;
+      }
+
+      parseProductData(data);
+      localStorage.setItem("productData", data);
+      renderTable();
+      showMessage(products.length + " products saved.");
+    }
+
+    function renderTable() {
+      const tableArea = document.getElementById("tableArea");
+      const searchText = document.getElementById("searchBox").value.trim().toLowerCase();
+
+      const filteredProducts = products.filter(product =>
+        product.name.toLowerCase().includes(searchText)
+      );
+
+      if (filteredProducts.length === 0) {
+        tableArea.innerHTML = "<p>No products to show.</p>";
+        return;
+      }
+
+      let html = `
+        <table>
+          <thead>
+            <tr>
+              <th style="width: 40%;">Product Name</th>
+              <th style="width: 25%;">Enter Code</th>
+              <th style="width: 35%;">Picture</th>
+            </tr>
+          </thead>
+          <tbody>
+      `;
+
+      filteredProducts.forEach(product => {
+        html += `
+          <tr>
+            <td>${escapeHtml(product.name)}</td>
+            <td>
+              <input
+                class="code-input"
+                type="text"
+                placeholder="Enter code"
+                oninput="checkCode('${product.id}', this.value)"
+              />
+              <div id="status-${product.id}" class="status"></div>
+            </td>
+            <td>
+              <img id="img-${product.id}" class="product-img" alt="${escapeHtml(product.name)} picture" />
+              <div id="source-${product.id}" class="status"></div>
+            </td>
+          </tr>
+        `;
+      });
+
+      html += "</tbody></table>";
+      tableArea.innerHTML = html;
+    }
+
+    async function checkCode(productId, enteredCode) {
+      const product = products.find(item => item.id === productId);
+      const status = document.getElementById("status-" + productId);
+      const img = document.getElementById("img-" + productId);
+      const source = document.getElementById("source-" + productId);
+
+      if (!product) return;
+
+      if (!enteredCode.trim()) {
+        status.textContent = "";
+        status.className = "status";
+        img.style.display = "none";
+        img.src = "";
+        source.textContent = "";
+        return;
+      }
+
+      if (enteredCode.trim() !== product.code) {
+        status.textContent = "Wrong code";
+        status.className = "status wrong";
+        img.style.display = "none";
+        img.src = "";
+        source.textContent = "";
+        return;
+      }
+
+      status.textContent = "Correct. Loading picture...";
+      status.className = "status correct";
+
+      if (!product.imageLoaded) {
+        product.imageUrl = await findWikimediaImage(product.name);
+        product.imageLoaded = true;
+      }
+
+      if (product.imageUrl) {
+        img.src = product.imageUrl;
+        img.style.display = "block";
+        source.textContent = "Image from Wikimedia Commons search.";
+        status.textContent = "Correct";
+      } else {
+        img.style.display = "none";
+        source.textContent = "No picture found automatically.";
+        status.textContent = "Correct, but no picture found.";
+      }
+    }
+
+    async function findWikimediaImage(searchTerm) {
+      try {
+        const searchUrl = "https://commons.wikimedia.org/w/api.php?action=query&generator=search&gsrsearch=" +
+          encodeURIComponent(searchTerm) +
+          "&gsrnamespace=6&gsrlimit=1&prop=imageinfo&iiprop=url&iiurlwidth=500&format=json&origin=*";
+
+        const response = await fetch(searchUrl);
+        const data = await response.json();
+
+        if (!data.query || !data.query.pages) return null;
+
+        const pages = Object.values(data.query.pages);
+        if (pages.length === 0 || !pages[0].imageinfo || !pages[0].imageinfo[0]) return null;
+
+        return pages[0].imageinfo[0].thumburl || pages[0].imageinfo[0].url;
+      } catch (error) {
+        console.error(error);
+        return null;
+      }
+    }
+
+    function clearProductList() {
+      localStorage.removeItem("productData");
+      products = [];
+      document.getElementById("productData").value = "";
+      document.getElementById("tableArea").innerHTML = "";
+      showMessage("Saved product list cleared.");
+    }
+
+    function loadExampleData() {
+      const example = `Apple, 123
+Italian parsley, 234
+Banana, 456
+Orange, 789
+Strawberry, 555
+Green onion, 888`;
+
+      document.getElementById("productData").value = example;
+      parseProductData(example);
+      localStorage.setItem("productData", example);
+      renderTable();
+      showMessage("Example product list loaded.");
+    }
+
+    function showMessage(text) {
+      document.getElementById("message").textContent = text;
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement("div");
+      div.textContent = text;
+      return div.innerHTML;
+    }
+  </script>
+</body>
+</html>
