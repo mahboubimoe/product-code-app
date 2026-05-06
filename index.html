@@ -163,9 +163,31 @@
 
   <script>
     let products = [];
+async function loadProductsFromSheet() {
+  const url = https://docs.google.com/spreadsheets/d/138CuW3rTC6PzJ2b9zQ33WQP44MtRgCD25FhUeWKN_KI//export?format=csv;
 
+  const response = await fetch(url);
+  const text = await response.text();
+
+  const rows = text.split("\n").slice(1); // skip header
+
+  products = rows.map(row => {
+    const [name, code] = row.split(",");
+
+    return {
+      id: name.trim().toLowerCase(),
+      name: name.trim(),
+      code: code.trim(),
+      imageUrl: "",
+      imageLoaded: false
+    };
+  });
+
+  renderTable();
+  showMessage(products.length + " products loaded from Google Sheets.");
+}
    window.onload = function () {
-  loadProductsFromJson();
+  loadProductsFromSheet();
 };
 
     function parseProductData(data) {
