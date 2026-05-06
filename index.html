@@ -164,15 +164,9 @@
   <script>
     let products = [];
 
-    window.onload = function () {
-      const savedData = localStorage.getItem("productData");
-      if (savedData) {
-        document.getElementById("productData").value = savedData;
-        parseProductData(savedData);
-        renderTable();
-        showMessage(products.length + " products loaded.");
-      }
-    };
+   window.onload = function () {
+  loadProductsFromJson();
+};
 
     function parseProductData(data) {
       products = [];
